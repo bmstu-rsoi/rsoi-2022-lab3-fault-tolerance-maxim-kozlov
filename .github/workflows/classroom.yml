@@ -25,7 +25,7 @@ jobs:
           docker compose build
 
       - name: Run containers
-        timeout-minutes: 10
+        timeout-minutes: 5
         run: |
           ./scripts/start.sh
           ./scripts/wait-script.sh
