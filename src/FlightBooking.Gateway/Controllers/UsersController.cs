@@ -4,8 +4,11 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Mime;
 using System.Threading.Tasks;
+using FlightBooking.BonusService.Dto;
 using FlightBooking.Gateway.Domain;
+using FlightBooking.Gateway.Dto;
 using FlightBooking.Gateway.Dto.Users;
+using FlightBooking.Gateway.Exceptions;
 using FlightBooking.Gateway.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -61,6 +64,11 @@ public class UsersController : ControllerBase
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return NotFound(username);
+        }
+        catch (ServiceUnavailableException ex)
+        {
+            _logger.LogError(ex, "Service is inoperative, please try later on");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new MessageDto($"{ex.ServiceName} unavailable"));
         }
         catch (Exception ex)
         {

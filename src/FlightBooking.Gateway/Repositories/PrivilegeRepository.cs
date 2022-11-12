@@ -1,12 +1,15 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 using System.Web;
 using FlightBooking.BonusService.Dto;
+using FlightBooking.Gateway.Exceptions;
 using FlightBooking.Gateway.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Polly.CircuitBreaker;
 
 namespace FlightBooking.Gateway.Repositories;
 
@@ -29,39 +32,60 @@ public class PrivilegeRepository : IPrivilegeRepository
     
     public async Task<PrivilegeDto> GetAsync(string username, bool needHistory)
     {
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["username"] = username;
-        query["needHistory"] = needHistory.ToString();
+        try
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["username"] = username;
+            query["needHistory"] = needHistory.ToString();
 
-        var response = await _client.GetAsync($"api/v1/privilege/?{query}");
-        if (!response.IsSuccessStatusCode)
-            _logger.LogWarning("Failed get tickets {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
-        response.EnsureSuccessStatusCode();
+            var response = await _client.GetAsync($"api/v1/privilege/?{query}");
+            if (!response.IsSuccessStatusCode)
+                _logger.LogWarning("Failed get tickets {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
+            response.EnsureSuccessStatusCode();
         
-        return await response.Content.ReadAsJsonAsync<PrivilegeDto>() ?? throw new InvalidOperationException();
+            return await response.Content.ReadAsJsonAsync<PrivilegeDto>() ?? throw new InvalidOperationException();
+        }
+        catch (Exception ex) when(ex is HttpRequestException{ StatusCode: >= (HttpStatusCode)500 or null } or BrokenCircuitException)
+        {
+            throw new ServiceUnavailableException("Failed get flights", ex, serviceName: "Bonus Service");
+        }
     }
 
     public async Task<BalanceHistoryDto> CreateAsync(string username, TicketPurchaseRequest request)
     {
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["username"] = username;
+        try
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["username"] = username;
 
-        var response = await _client.PostAsJsonAsync($"api/v1/history/?{query}", request);
-        if (!response.IsSuccessStatusCode)
-            _logger.LogWarning("Failed get tickets {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
-        response.EnsureSuccessStatusCode();
+            var response = await _client.PostAsJsonAsync($"api/v1/history/?{query}", request);
+            if (!response.IsSuccessStatusCode)
+                _logger.LogWarning("Failed get tickets {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
+            response.EnsureSuccessStatusCode();
         
-        return await response.Content.ReadAsJsonAsync<BalanceHistoryDto>() ?? throw new InvalidOperationException();
+            return await response.Content.ReadAsJsonAsync<BalanceHistoryDto>() ?? throw new InvalidOperationException();
+        }
+        catch (Exception ex) when(ex is HttpRequestException{ StatusCode: >= (HttpStatusCode)500 or null } or BrokenCircuitException)
+        {
+            throw new ServiceUnavailableException("Failed get flights", ex, serviceName: "Bonus Service");
+        }
     }
     
     public async Task DeleteAsync(string username, Guid ticketId)
     {
-        var query = HttpUtility.ParseQueryString(string.Empty);
-        query["username"] = username;
+        try
+        {
+            var query = HttpUtility.ParseQueryString(string.Empty);
+            query["username"] = username;
         
-        var response = await _client.DeleteAsync($"/api/v1/history/{ticketId}/?{query}");
-        if (!response.IsSuccessStatusCode)
-            _logger.LogWarning("Failed delete ticket {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
-        response.EnsureSuccessStatusCode();
+            var response = await _client.DeleteAsync($"/api/v1/history/{ticketId}/?{query}");
+            if (!response.IsSuccessStatusCode)
+                _logger.LogWarning("Failed delete ticket {statusCode}, {descriprion}", response.StatusCode, response.Content.ReadAsStringAsync());
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex) when(ex is HttpRequestException{ StatusCode: >= (HttpStatusCode)500 or null } or BrokenCircuitException)
+        {
+            throw new ServiceUnavailableException("Failed get flights", ex, serviceName: "Bonus Service");
+        }
     }
 }

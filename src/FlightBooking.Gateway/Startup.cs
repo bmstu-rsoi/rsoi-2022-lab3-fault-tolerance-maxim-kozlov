@@ -33,8 +33,8 @@ public class Startup
     {
         services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy())
-            .AddUrlGroup(new Uri(Configuration["FlightsService:Host"]), name: "flights-service-check")
-            .AddUrlGroup(new Uri(Configuration["TicketService:Host"]), name: "ticket-service-check")
+            .AddUrlGroup(new Uri(Configuration["FlightsService:Host"]), name: "flights-service-check", failureStatus: HealthStatus.Degraded)
+            .AddUrlGroup(new Uri(Configuration["TicketService:Host"]), name: "ticket-service-check", failureStatus: HealthStatus.Degraded)
             .AddUrlGroup(new Uri(Configuration["PrivilegeService:Host"]), name: "bonus-service-check", failureStatus: HealthStatus.Degraded);
         
         services.AddControllers()
@@ -90,10 +90,7 @@ public class Startup
         app.UseEndpoints(endpoints =>
         {
             endpoints.MapControllers();
-            endpoints.MapHealthChecks("/manage/health", new HealthCheckOptions()
-            {
-                Predicate = _ => true
-            });
+            endpoints.MapHealthChecks("/manage/health");
             endpoints.MapHealthChecks("/manage/health/liveness", new HealthCheckOptions
             {
                 Predicate = r => r.Name.Contains("self")
