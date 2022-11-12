@@ -44,16 +44,16 @@ public class UsersController : ControllerBase
         try
         {
             var response = new UserInfoResponse();
-            response.Privilege = await _privilegeRepository.GetAsync(username, needHistory: false);
+            var tickets = await _ticketsService.GetAllAsync(username);
+            response.Tickets = tickets.ToArray();
             
             try
             {
-                var tickets = await _ticketsService.GetAllAsync(username);
-                response.Tickets = tickets.ToArray();
+                response.Privilege = await _privilegeRepository.GetAsync(username, needHistory: false);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                // ignore
+                _logger.LogError(ex, "Failed get bonus for {username}", username);
             }
             
             return Ok(response);
