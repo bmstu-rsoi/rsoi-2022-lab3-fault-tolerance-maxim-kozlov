@@ -41,6 +41,7 @@ services:
       - flight-service
       - bonus-service
       - ticket-service
+      - rabbit
 
   ticket-service:
     build:
@@ -74,6 +75,7 @@ services:
       - "8050:8050"
     depends_on:
       - postgres
+      - rabbit
 
 volumes:
   db-data:
