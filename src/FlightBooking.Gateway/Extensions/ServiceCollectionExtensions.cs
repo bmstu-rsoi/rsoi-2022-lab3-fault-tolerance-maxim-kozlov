@@ -1,6 +1,7 @@
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FlightBooking.Gateway.Extensions;
 
@@ -14,7 +15,10 @@ public static class ServiceCollectionExtensions
         {
             // cfg.AddSagaStateMachine<TicketPurchaseStateMachine, TicketPurchaseSaga>()
             //     .InMemoryRepository();
-            
+            cfg.ConfigureHealthCheckOptions(x =>
+            {
+                x.FailureStatus = HealthStatus.Degraded;
+            });
             cfg.UsingRabbitMq((context, config) =>
             {
                 config.UseBsonSerializer();

@@ -28,6 +28,7 @@ jobs:
         timeout-minutes: 5
         run: |
           ./scripts/start.sh
+          sleep 1
           ./scripts/wait-script.sh
         env:
           WAIT_PORTS: 8080,8070,8060,8050

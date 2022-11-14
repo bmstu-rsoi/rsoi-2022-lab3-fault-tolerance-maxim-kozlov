@@ -1,5 +1,6 @@
 using FlightBooking.BonusService.Consumers;
 using MassTransit;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FlightBooking.BonusService.Extensions;
 
@@ -13,6 +14,11 @@ public static class ServiceCollectionExtensions
         {
             cfg.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter(configuration.GetValue<string>("EndpointPrefix"), false));
             cfg.AddConsumer<DeleteTicketConsumer>();
+         
+            cfg.ConfigureHealthCheckOptions(x =>
+            {
+                x.FailureStatus = HealthStatus.Degraded;
+            });
             
             cfg.UsingRabbitMq((context, config) =>
             {
