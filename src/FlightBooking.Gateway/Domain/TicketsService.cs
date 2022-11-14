@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AutoMapper;
 using FlightBooking.BonusService.Dto;
 using FlightBooking.Gateway.Dto.Tickets;
+using FlightBooking.Gateway.Exceptions;
 using FlightBooking.Gateway.Repositories;
 using FlightBooking.TicketService.Dto;
 using Microsoft.AspNetCore.Http;
@@ -60,33 +61,19 @@ public class TicketsService : ITicketsService
 
     public async Task<TicketPurchaseResponse> PurchaseAsync(string username, TicketPurchaseRequest request)
     {
-        // по-хорошему транзация
         var response = new TicketPurchaseResponse();
 
+        var flight = await _flightsRepository.GetByNumberAsync(request.FlightNumber);
+        // check price in request
+        
+        _mapper.Map(flight, response);
+        
         var newTicket = _mapper.Map<TicketPurchaseRequest, TicketDto>(request);
+        
         newTicket.Status = TicketStatusDto.Paid;
         newTicket.Username = username;
         var createdTicket = await _ticketsRepository.CreateAsync(newTicket);
-        
-        // var privilege = await _privilegeRepository.GetAsync(username, needHistory: false);
-        // var operation = new BalanceHistoryDto()
-        // {
-        //     TicketUid = createdTicket.TicketUid,
-        //     DateTime = DateTime.Now
-        // };
-        // if (request.PaidFromBalance)
-        // {
-        //     if (request.Price > privilege.Balance)
-        //         operation.BalanceDiff = -privilege.Balance;
-        //     else
-        //         operation.BalanceDiff = -request.Price;
-        //     operation.OperationType = OperationTypeDto.DebitAccount;
-        // }
-        // else
-        // {
-        //     operation.BalanceDiff = (int)(request.Price * 0.1);
-        //     operation.OperationType = OperationTypeDto.FilledByMoney;
-        // }
+        response.TicketId = createdTicket.TicketUid;
         
         var bonusRequest = new FlightBooking.BonusService.Dto.TicketPurchaseRequest
         {
@@ -95,15 +82,23 @@ public class TicketsService : ITicketsService
             PaidFromBalance = request.PaidFromBalance
         };
         
-        var operation = await _privilegeRepository.CreateAsync(username, bonusRequest);
-        if (request.PaidFromBalance)
-            response.paidByBonuses = -operation.BalanceDiff;
-        response.paidByMoney = request.Price - response.paidByBonuses;
+        try
+        {
+            var operation = await _privilegeRepository.CreateAsync(username, bonusRequest);
+            if (request.PaidFromBalance)
+                response.paidByBonuses = -operation.BalanceDiff;
+            response.paidByMoney = request.Price - response.paidByBonuses;
 
-        response.Privilege = await _privilegeRepository.GetAsync(username, needHistory: false);
-        response.TicketId = createdTicket.TicketUid;
-        
-        await AddFlightInfoAsync(request.FlightNumber, response);
+            response.Privilege = await _privilegeRepository.GetAsync(username, needHistory: false);
+        }
+        catch (ServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Error while create bonus for {ticketUid}", createdTicket.TicketUid);
+            
+            // compensation action
+            await _ticketsRepository.DeleteAsync(username, createdTicket.TicketUid);
+            throw;
+        }
 
         return response;
     }
@@ -121,11 +116,7 @@ public class TicketsService : ITicketsService
             var flight = await _flightsRepository.GetByNumberAsync(flightNumber);
             _mapper.Map(flight, ticket);
         }
-        catch (BrokenCircuitException ex)
-        {
-            _logger.LogWarning(ex, "Flight service is inoperative, please try later on (BrokenCircuit)");
-        }
-        catch (HttpRequestException ex)
+        catch (ServiceUnavailableException ex)
         {
             _logger.LogWarning(ex, "Error while getting flights info for {flightNumber}", flightNumber);
         }

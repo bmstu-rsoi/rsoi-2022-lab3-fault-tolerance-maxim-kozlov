@@ -14,6 +14,21 @@ services:
     ports:
       - "5432:5432"
 
+  rabbit:
+    image: rabbitmq:3.9.2-management-alpine
+    hostname: rabbit
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    volumes:
+      - "./rabbitmq/data/:/var/lib/rabbitmq/"
+      - "./rabbitmq/log/:/var/log/rabbitmq/"
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics check_local_alarms"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+
   api-gateway:
     build:
       context: .

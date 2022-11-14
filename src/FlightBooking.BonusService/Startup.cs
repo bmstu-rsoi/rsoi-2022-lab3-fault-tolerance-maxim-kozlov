@@ -1,5 +1,6 @@
 using System.Reflection;
 using FlightBooking.BonusService.Database;
+using FlightBooking.BonusService.Extensions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
@@ -42,6 +43,8 @@ public class Startup
         });
 
         services.AddDbContext<BonusContext>(opt => opt.UseNpgsql(Configuration.GetValue<string>("DATABASE_URL")));
+
+        services.AddMassTransit(Configuration);
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

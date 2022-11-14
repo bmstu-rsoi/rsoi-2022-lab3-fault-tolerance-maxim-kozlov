@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using FlightBooking.Gateway.Domain;
+using FlightBooking.Gateway.Extensions;
 using FlightBooking.Gateway.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -15,7 +16,6 @@ using Microsoft.OpenApi.Models;
 using Newtonsoft.Json.Converters;
 using Polly;
 using Polly.Extensions.Http;
-using Polly.NoOp;
 
 namespace FlightBooking.Gateway;
 
@@ -58,20 +58,23 @@ public class Startup
         // register http services
         services.Configure<FlightsSettings>(Configuration.GetSection("FlightsService"));
         services.AddHttpClient<IFlightsRepository, FlightsRepository>()
-            .AddPolicyHandler(GetRetryPolicy())
+            // .AddPolicyHandler(GetRetryPolicy())
             .AddPolicyHandler(GetCircuitBreakerPolicy());
         
         services.Configure<TicketsSettings>(Configuration.GetSection("TicketService"));
         services.AddHttpClient<ITicketsRepository, TicketsRepository>()
-            .AddPolicyHandler(GetRetryPolicy())
+            // .AddPolicyHandler(GetRetryPolicy())
             .AddPolicyHandler(GetCircuitBreakerPolicy());
         
         services.Configure<PrivilegeSettings>(Configuration.GetSection("PrivilegeService"));
         services.AddHttpClient<IPrivilegeRepository, PrivilegeRepository>()
-            .AddPolicyHandler(GetRetryPolicy())
+            // .AddPolicyHandler(GetWaitAndRetryForeverPolicy())
+            // .AddPolicyHandler(GetRetryPolicy())
             .AddPolicyHandler(GetCircuitBreakerPolicy());
         
         services.AddScoped<ITicketsService, TicketsService>();
+
+        services.AddMassTransit(Configuration);
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -102,14 +105,13 @@ public class Startup
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
-            .CircuitBreakerAsync(5, TimeSpan.FromSeconds(30));
+            .CircuitBreakerAsync(15, TimeSpan.FromSeconds(10));
     }
     
     private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
     {
         return HttpPolicyExtensions
             .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.NotFound)
             .WaitAndRetryAsync(2, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }
