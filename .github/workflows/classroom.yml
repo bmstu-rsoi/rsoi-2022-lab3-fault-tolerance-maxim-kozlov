@@ -25,12 +25,12 @@ jobs:
           docker compose build
 
       - name: Run containers
-        timeout-minutes: 15
+        timeout-minutes: 5
         run: |
           ./scripts/start.sh
           ./scripts/wait-script.sh
         env:
-          WAIT_PORTS: 8080,8070,8060,8050
+          WAIT_PORTS: 8080,8070,8060,8050,5672
 
       - name: Fill database for tests
         run: |
@@ -61,4 +61,6 @@ jobs:
       - name: Stop containers
         if: always()
         continue-on-error: true
-        run: ./scripts/stop.sh
+        run: |
+          docker ps
+          ./scripts/stop.sh

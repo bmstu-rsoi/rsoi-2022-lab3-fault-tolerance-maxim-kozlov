@@ -13,8 +13,6 @@ public static class ServiceCollectionExtensions
 
         services.AddMassTransit(cfg =>
         {
-            // cfg.AddSagaStateMachine<TicketPurchaseStateMachine, TicketPurchaseSaga>()
-            //     .InMemoryRepository();
             cfg.ConfigureHealthCheckOptions(x =>
             {
                 x.FailureStatus = HealthStatus.Degraded;
