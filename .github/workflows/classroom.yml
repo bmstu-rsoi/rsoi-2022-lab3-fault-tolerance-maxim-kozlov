@@ -62,5 +62,5 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          docker ps
+          docker-compose logs
           ./scripts/stop.sh
